@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Business Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .chat-container::-webkit-scrollbar { width: 6px; }
+        .chat-container::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        pre { background: #1e293b; color: white; padding: 1rem; border-radius: 0.5rem; margin: 0.5rem 0; overflow-x: auto; }
+    </style>
+</head>
+<body class="bg-slate-100 h-screen flex overflow-hidden">
+
+    <aside class="w-64 bg-slate-900 text-white hidden md:flex flex-col p-4">
+        <div class="font-bold text-xl mb-8 flex items-center gap-2">
+            <i class="fas fa-wave-square text-blue-400"></i> We-Wave AI
+        </div>
+        <button onclick="resetChat()" class="w-full border border-slate-700 rounded-lg p-2 hover:bg-slate-800 transition flex items-center justify-center gap-2">
+            <i class="fas fa-plus"></i> New Chat
+        </button>
+        <div class="mt-auto text-xs text-slate-500 text-center">v2.0 Performance Marketing AI</div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full bg-white relative">
+        <header class="p-4 border-b flex justify-between items-center bg-white shadow-sm z-10">
+            <h2 class="font-semibold text-slate-700">Marketing Assistant</h2>
+            <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">Online</span>
+        </header>
+
+        <div id="chat-window" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 chat-container">
+            <div class="flex gap-4 max-w-3xl">
+                <div class="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white shrink-0">
+                    <i class="fas fa-robot text-xs"></i>
+                </div>
+                <div class="bg-slate-100 p-4 rounded-2xl rounded-tl-none text-slate-800">
+                    Hello! I'm your We-Wave marketing assistant. How can I help you scale your business today?
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 border-t bg-white">
+            <div class="max-w-3xl mx-auto relative">
+                <textarea id="user-input" rows="1" placeholder="Type your strategy question..." 
+                    class="w-full p-4 pr-16 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden"
+                    oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+                <button onclick="sendMessage()" class="absolute right-3 bottom-3 bg-blue-600 text-white w-10 h-10 rounded-lg hover:bg-blue-700 transition flex items-center justify-center">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <p class="text-[10px] text-center text-slate-400 mt-2">AI can make mistakes. Verify important marketing data.</p>
+        </div>
+    </main>
+
+    <script>
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('user-input');
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Append User Message
+            appendMessage('user', message);
+            userInput.value = '';
+            userInput.style.height = 'auto';
+
+            // Show Loading State
+            const loadingId = appendMessage('assistant', '<i class="fas fa-circle-notch fa-spin"></i> Thinking...');
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                const data = await response.json();
+                
+                // Update with AI Response
+                document.getElementById(loadingId).innerHTML = marked.parse(data.response);
+            } catch (err) {
+                document.getElementById(loadingId).innerText = "Error: Could not connect to the AI server.";
+            }
+            
+            chatWindow.scrollTo({ top: chatWindow.scrollHeight, behavior: 'smooth' });
+        }
+
+        function appendMessage(role, text) {
+            const id = 'msg-' + Math.random().toString(36).substr(2, 9);
+            const isAI = role === 'assistant';
+            const html = `
+                <div class="flex gap-4 max-w-3xl ${role === 'user' ? 'ml-auto flex-row-reverse' : ''}">
+                    <div class="w-8 h-8 rounded flex items-center justify-center text-white shrink-0 ${isAI ? 'bg-blue-600' : 'bg-slate-700'}">
+                        <i class="fas ${isAI ? 'fa-robot' : 'fa-user'} text-xs"></i>
+                    </div>
+                    <div id="${id}" class="p-4 rounded-2xl ${isAI ? 'bg-slate-100 rounded-tl-none' : 'bg-blue-600 text-white rounded-tr-none shadow-md'}">
+                        ${isAI ? text : text}
+                    </div>
+                </div>`;
+            chatWindow.innerHTML += html;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return id;
+        }
+
+        async function resetChat() {
+            await fetch('/reset', { method: 'POST' });
+            location.reload();
+        }
+
+        // Allow Enter to send
+        userInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
